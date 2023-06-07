@@ -1,4 +1,5 @@
 import pygame
+import math
 
 def scale_image(img, factor):
     size = round(img.get_width() * factor), round(img.get_height() * factor)
@@ -11,3 +12,6 @@ def blit_rotate_center(win, image, top_left, angle):
     win.blit(rotated_image, new_rect.topleft)
 
     return new_rect
+
+def calculate_rect_distance(center1, center2):
+    return math.sqrt((center1[0] - center2[0])**2 + (center1[1] - center2[1])**2)
