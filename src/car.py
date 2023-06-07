@@ -50,12 +50,14 @@ class AbstractCar:
         self.vel = 0
 
     def is_parked(self, win, parking_space):
-        car_rect = blit_rotate_center(win, self.img, (self.x, self.y), self.angle)
+        car_rect = blit_rotate_center(win, self.img, (self.x, self.y), self.angle, False)
         return parking_space.contains(car_rect)
     
     def get_center(self, win):
         return blit_rotate_center(win, self.img, (self.x, self.y), self.angle).center
     
+    def get_rect(self, win):
+        return blit_rotate_center(win, self.img, (self.x, self.y), self.angle)
 
 class PlayerCar(AbstractCar):
 
