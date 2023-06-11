@@ -4,6 +4,7 @@ from network import FeedForwardNN
 from torch.distributions import MultivariateNormal
 from torch.optim import Adam
 import numpy as np
+from rlenv import ParkingEnv
 
 class PPO():
     def __init__(self, env):
@@ -35,6 +36,7 @@ class PPO():
         dist = MultivariateNormal(mean, self.cov_mat)
 
         action = dist.sample()
+        # print(action)
         log_prob = dist.log_prob(action)
 
         return action.detach().numpy(), log_prob.detach()
@@ -131,10 +133,3 @@ class PPO():
                 self.critic_optimzer.zero_grad()
                 critic_loss.backward()
                 self.critic_optimzer.step()
-
-if __name__ == "__main__":
-    #test on gymnasium env
-    import gym
-    env = gym.make('Pendulum-v1')
-    model = PPO(env)
-    model.learn(10000)
