@@ -1,5 +1,4 @@
 import pygame
-import math
 import random
 from utils import scale_image, calculate_rect_distance
 from car import PlayerCar
