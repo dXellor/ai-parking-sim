@@ -46,27 +46,23 @@ class ParkingEnv(Env, EzPickle):
 
         self.reward = 0
         self.previous_reward = 0
-        self.action_space = spaces.Box(
-            np.array([-1, -1]).astype(np.float32),
-            np.array([+1, +1]).astype(np.float32),
-            #0.forward-backward, 1.left-right
-        )
+        self.action_space = spaces.MultiDiscrete(np.array([3, 3]))
 
         # car x and y coord, car angle, car speed, distance to parking
         self.observation_space = spaces.Box(np.array([0, 0, -10000, -1000, 0]), np.array([WIDTH, HEIGHT, 10000, 1000, HEIGHT**2+WIDTH**2]), shape=(5,))
 
 
     def step(self, action) :
-        if action[0] > 0.25:
+        if action[0] == 1:
             self.car.move_forward()
-        elif action[0] < -0.25:
+        elif action[0] == 2:
             self.car.move_backward()
         else:
             self.car.reduce_speed()
 
-        if action[1] > 0.25:
+        if action[1] == 1:
             self.car.rotate(right=True)
-        elif action[1] < -0.25:
+        elif action[1] == 2:
             self.car.rotate(left=True)
 
         self.state = np.array(
@@ -189,14 +185,14 @@ if __name__ == "__main__":
         keys = pygame.key.get_pressed()
 
         if keys[pygame.K_DOWN]:
-            action[0] = -1
+            action[0] = 2
         elif keys[pygame.K_UP]:
             action[0] = 1
         else:
             action[0] = 0
 
         if keys[pygame.K_LEFT]:
-            action[1] = -1
+            action[1] = 2
         elif keys[pygame.K_RIGHT]:
             action[1] = 1
         else:
@@ -210,8 +206,8 @@ if __name__ == "__main__":
         steps = 0
         restart = False
         while True:
-            register_input()
-            # action = env.action_space.sample()
+            # register_input()
+            action = env.action_space.sample()
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
