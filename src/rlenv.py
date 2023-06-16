@@ -1,6 +1,5 @@
-from gym import Env
-from gym import spaces
-from gym.utils.ezpickle import EzPickle
+from gymnasium import Env
+from gymnasium import spaces
 import pygame
 import random
 import numpy as np
@@ -17,7 +16,7 @@ WIDTH, HEIGHT = 640, 480
 BG_COLOR = (115, 118, 122)
 PARKING_SPACE_COLOR = (0, 255, 0)
 OBSTACLE_COLOR = (0, 0, 0)
-OBSTACLE_NUM = 8
+OBSTACLE_NUM = 12
 
 global START_AGAIN
 START_AGAIN = True
@@ -25,10 +24,9 @@ FPS = 60
 
 pygame.display.set_caption("AI Parking Simulator")
 
-class ParkingEnv(Env, EzPickle):
+class ParkingEnv(Env):
 
     def __init__(self, verbose, spawnobstacles=False):
-        EzPickle.__init__(self, verbose)
         self.verbose = verbose
         self.spawnobstacles = spawnobstacles 
         
@@ -40,19 +38,22 @@ class ParkingEnv(Env, EzPickle):
             self.spawn_obstacles()
         self.clock = pygame.time.Clock()
         pygame.time.set_timer(pygame.USEREVENT, 1000)
-        self.counter = 10
+        self.counter = 30
         self.text = str(self.counter).rjust(3)
         self.font = pygame.font.SysFont('Consolas', 30)
+        self.test = False
 
         self.reward = 0
         self.previous_reward = 0
         self.action_space = spaces.MultiDiscrete(np.array([3, 3]))
 
         # car x and y coord, car angle, car speed, distance to parking
-        self.observation_space = spaces.Box(np.array([0, 0, -10000, -1000, 0]), np.array([WIDTH, HEIGHT, 10000, 1000, HEIGHT**2+WIDTH**2]), shape=(5,))
+        self.observation_space = spaces.Box(np.array([0, 0, -10000, -1000, 0]),
+                                            np.array([WIDTH, HEIGHT, 10000, 1000, HEIGHT**2+WIDTH**2]),
+                                            shape=(5,))
 
 
-    def step(self, action) :
+    def step(self, action):
         if action[0] == 1:
             self.car.move_forward()
         elif action[0] == 2:
@@ -73,26 +74,30 @@ class ParkingEnv(Env, EzPickle):
         terminate = False
         success = False
         if action is not None:
-            self.reward = -0.2
-            self.reward -= self.parking_space_distance() / 10
+            parking_distance = self.parking_space_distance()
+            step_reward -= 0.05
+            step_reward -= parking_distance/1000
 
-            self.reward -= self.previous_reward
-            step_reward =  self.reward - self.previous_reward
-
-            if self.out_of_bounds() or self.counter <= 0:
-                terminate = True
-                step_reward -= 100
+            if self.out_of_bounds():
+                step_reward -= 1000
+                self.car.reset()
 
             if self.spawnobstacles:
                 if self.obstacle_collision():
-                    terminate = True
-                    step_reward -= 100
+                    self.car.reset()
+                    step_reward -= 1000
+
+            if self.counter == 0:
+                step_reward -= 100
+                terminate = True
 
             if self.car.is_parked(self.window, self.parking_space):
                 success = True
-                step_reward += 1000
-            
+                step_reward += 1000000
+
         self.render()
+        self.previous_reward = self.reward
+        self.reward = self.reward + step_reward       
         info = {}
 
         return self.state, step_reward, terminate, success, info
@@ -106,12 +111,12 @@ class ParkingEnv(Env, EzPickle):
                 self.counter -= 1
                 self.text = str(self.counter).rjust(3)
     
-    def reset(self):
+    def reset(self, seed=None):
         self.car = PlayerCar(4, 4, CAR, (random.randint(CAR.get_height(), WIDTH - 80), random.randint(CAR.get_height(), HEIGHT-80)))
         self.spawn_parking_space()
         if self.spawnobstacles:
             self.spawn_obstacles()
-        self.counter = 10
+        self.counter = 30
         self.text = str(self.counter).rjust(3)
         self.font = pygame.font.SysFont('Consolas', 30)
 
@@ -174,6 +179,8 @@ class ParkingEnv(Env, EzPickle):
                     pygame.draw.rect(self.window, OBSTACLE_COLOR, o)
 
         self.window.blit(self.font.render(self.text, True, (0, 0, 0)), (WIDTH - 60, 10))
+        reward_text = f"R:{self.reward:.4f}"
+        self.window.blit(self.font.render(reward_text, True, (0, 0, 0)), (10, 10))
         self.car.draw(self.window)
         pygame.display.update()
 
