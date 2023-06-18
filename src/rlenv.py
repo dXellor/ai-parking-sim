@@ -3,7 +3,7 @@ from gymnasium import spaces
 import pygame
 import random
 import numpy as np
-from utils import scale_image, calculate_rect_distance
+from utils import scale_image, calculate_rect_distance, normalize_value
 from car import PlayerCar
 
 pygame.init()
@@ -48,9 +48,7 @@ class ParkingEnv(Env):
         self.action_space = spaces.MultiDiscrete(np.array([3, 3]))
 
         # car x and y coord, car angle, car speed, distance to parking
-        self.observation_space = spaces.Box(np.array([0, 0, -10000, -1000, 0]),
-                                            np.array([WIDTH, HEIGHT, 10000, 1000, HEIGHT**2+WIDTH**2]),
-                                            shape=(5,))
+        self.observation_space = spaces.Box(low=0, high=1, shape=(5,))
 
 
     def step(self, action):
@@ -67,7 +65,13 @@ class ParkingEnv(Env):
             self.car.rotate(left=True)
 
         self.state = np.array(
-            [self.car.x, self.car.y, self.car.angle, self.car.vel, self.parking_space_distance()]
+            [
+                normalize_value(self.car.x, 0, WIDTH),
+                normalize_value(self.car.y, 0, HEIGHT),
+                normalize_value(self.car.angle, -359, 359),
+                normalize_value(self.car.vel, -100, 100),
+                normalize_value(self.parking_space_distance(), 0, WIDTH**2+HEIGHT**2),
+            ]
         )
 
         step_reward = 0
@@ -75,8 +79,7 @@ class ParkingEnv(Env):
         success = False
         if action is not None:
             parking_distance = self.parking_space_distance()
-            step_reward -= 0.05
-            step_reward -= parking_distance/1000
+            step_reward -= parking_distance/10
 
             if self.out_of_bounds():
                 step_reward -= 1000

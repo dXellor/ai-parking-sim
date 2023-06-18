@@ -17,4 +17,4 @@ if __name__ == "__main__":
         print(f"Run {i}")
         i += 1
         model.learn(total_timesteps=25000)
-        model.save("parking-ppo-v1-nobs")    
+        model.save(RESOURCE_PATH + "parking-ppo-v1-nobs")    

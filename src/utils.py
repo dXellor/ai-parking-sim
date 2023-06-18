@@ -17,3 +17,6 @@ def blit_rotate_center(win, image, top_left, angle, scale_rec=True):
 
 def calculate_rect_distance(center1, center2):
     return math.sqrt((center1[0] - center2[0])**2 + (center1[1] - center2[1])**2)
+
+def normalize_value(value, min, max):
+    return (value - min) / (max - min)
