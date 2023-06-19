@@ -16,7 +16,6 @@ WIDTH, HEIGHT = 640, 480
 BG_COLOR = (115, 118, 122)
 PARKING_SPACE_COLOR = (0, 255, 0)
 OBSTACLE_COLOR = (0, 0, 0)
-OBSTACLE_NUM = 12
 
 global START_AGAIN
 START_AGAIN = True
@@ -26,15 +25,15 @@ pygame.display.set_caption("AI Parking Simulator")
 
 class ParkingEnv(Env):
 
-    def __init__(self, verbose, spawnobstacles=False):
+    def __init__(self, verbose, obstacle_number = 0):
         self.verbose = verbose
-        self.spawnobstacles = spawnobstacles 
         
         self.window = pygame.display.set_mode((WIDTH, HEIGHT))
         self.window.fill(BG_COLOR)
         self.car = PlayerCar(4, 4, CAR, (random.randint(CAR.get_height(), WIDTH - 80), random.randint(CAR.get_height(), HEIGHT-80)))
         self.spawn_parking_space()
-        if self.spawnobstacles:
+        self.obstacle_number = obstacle_number
+        if self.obstacle_number > 0:
             self.spawn_obstacles()
         self.clock = pygame.time.Clock()
         pygame.time.set_timer(pygame.USEREVENT, 1000)
@@ -85,7 +84,7 @@ class ParkingEnv(Env):
                 step_reward -= 1000
                 self.car.reset()
 
-            if self.spawnobstacles:
+            if self.obstacle_number > 0:
                 if self.obstacle_collision():
                     self.car.reset()
                     step_reward -= 1000
@@ -117,7 +116,7 @@ class ParkingEnv(Env):
     def reset(self, seed=None):
         self.car = PlayerCar(4, 4, CAR, (random.randint(CAR.get_height(), WIDTH - 80), random.randint(CAR.get_height(), HEIGHT-80)))
         self.spawn_parking_space()
-        if self.spawnobstacles:
+        if self.obstacle_number > 0:
             self.spawn_obstacles()
         self.counter = 30
         self.text = str(self.counter).rjust(3)
@@ -153,7 +152,7 @@ class ParkingEnv(Env):
             if calculate_rect_distance(self.car.get_center(self.window), obstacle.center) > 50 and not obstacle.colliderect(self.parking_space):
                 self.obstacles.append(obstacle)
             
-            if len(self.obstacles) == OBSTACLE_NUM:
+            if len(self.obstacles) == self.obstacle_number:
                 return self.obstacles
             
     def parking_space_distance(self):
@@ -176,7 +175,7 @@ class ParkingEnv(Env):
         if DEBUG:
             pygame.draw.rect(self.window, (255, 255, 255), self.car.get_rect(self.window))
 
-        if self.spawnobstacles:
+        if self.obstacle_number:
             if self.obstacles:
                 for o in self.obstacles:
                     pygame.draw.rect(self.window, OBSTACLE_COLOR, o)
