@@ -20,7 +20,7 @@ class AbstractCar:
                 self.angle = self.angle - 360
         elif right:
             self.angle -= self.rotation_vel
-            if self.angle <= 360:
+            if self.angle <= 0:
                 self.angle = self.angle + 360
 
     def draw(self, win):

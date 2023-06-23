@@ -3,8 +3,9 @@ from gymnasium import spaces
 import pygame
 import random
 import numpy as np
-from utils import scale_image, calculate_rect_distance, normalize_value
+from utils import scale_image, calculate_rect_distance, calculate_angle, normalize_value
 from car import PlayerCar
+import math
 
 pygame.init()
 DEBUG = False
@@ -25,7 +26,7 @@ pygame.display.set_caption("AI Parking Simulator")
 
 class ParkingEnv(Env):
 
-    def __init__(self, verbose, obstacle_number = 0):
+    def __init__(self, verbose, obstacle_number = 0, counter = 30):
         self.verbose = verbose
         
         self.window = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -37,39 +38,39 @@ class ParkingEnv(Env):
             self.spawn_obstacles()
         self.clock = pygame.time.Clock()
         pygame.time.set_timer(pygame.USEREVENT, 1000)
-        self.counter = 30
+        self.counter = counter
         self.text = str(self.counter).rjust(3)
         self.font = pygame.font.SysFont('Consolas', 30)
-        self.test = False
+        self.looking_at_parking = False
 
         self.reward = 0
         self.previous_reward = 0
-        self.action_space = spaces.MultiDiscrete(np.array([3, 3]))
+        # self.action_space = spaces.MultiDiscrete(np.array([3, 3]))
+        self.action_space = spaces.Discrete(4)
 
         # car x and y coord, car angle, car speed, distance to parking
-        self.observation_space = spaces.Box(low=0, high=1, shape=(5,))
+        self.observation_space = spaces.Box(low=0, high=1, shape=(4,))
 
 
     def step(self, action):
-        if action[0] == 1:
+        if action == 0:
             self.car.move_forward()
-        elif action[0] == 2:
+        elif action == 1:
             self.car.move_backward()
         else:
             self.car.reduce_speed()
 
-        if action[1] == 1:
+        if action == 2:
             self.car.rotate(right=True)
-        elif action[1] == 2:
+        elif action == 3:
             self.car.rotate(left=True)
 
         self.state = np.array(
             [
-                normalize_value(self.car.x, 0, WIDTH),
-                normalize_value(self.car.y, 0, HEIGHT),
-                normalize_value(self.car.angle, -359, 359),
-                normalize_value(self.car.vel, -100, 100),
-                normalize_value(self.parking_space_distance(), 0, WIDTH**2+HEIGHT**2),
+                normalize_value(abs(self.car.x - self.parking_space.center[0]), 0, WIDTH),
+                normalize_value(abs(self.car.y - self.parking_space.center[1]), 0, HEIGHT),
+                normalize_value(abs(self.angle_to_parking_space() - self.car.angle), 0, 359),
+                normalize_value(self.car.vel, -4, 4),
             ]
         )
 
@@ -78,10 +79,26 @@ class ParkingEnv(Env):
         success = False
         if action is not None:
             parking_distance = self.parking_space_distance()
-            step_reward -= parking_distance/10
+            step_reward -= parking_distance/100
+            if abs(self.angle_to_parking_space() - self.car.angle) < 3 or abs(self.angle_to_parking_space() - self.car.angle) > 356:
+                if not self.looking_at_parking:
+                    step_reward += 100
+                    self.looking_at_parking = True
+                    print("POGLEDAO PARKING")
+            else:
+                if self.looking_at_parking:
+                    step_reward -= 10
+                else:
+                    step_reward -= 1
+
+            if self.car.vel < 0.5 and parking_distance > 20 and self.looking_at_parking:
+                step_reward -= 1
+            if self.car.vel > 0.8 and parking_distance < 20:
+                step_reward -= 1
 
             if self.out_of_bounds():
                 step_reward -= 1000
+                self.looking_at_parking = False
                 self.car.reset()
 
             if self.obstacle_number > 0:
@@ -89,9 +106,9 @@ class ParkingEnv(Env):
                     self.car.reset()
                     step_reward -= 1000
 
-            if self.counter == 0:
-                step_reward -= 100
-                terminate = True
+            # if self.counter == 0:
+            #     step_reward -= 100
+            #     terminate = True
 
             if self.car.is_parked(self.window, self.parking_space):
                 success = True
@@ -121,12 +138,18 @@ class ParkingEnv(Env):
         self.counter = 30
         self.text = str(self.counter).rjust(3)
         self.font = pygame.font.SysFont('Consolas', 30)
+        self.looking_at_parking = False
 
         self.reward = 0
         self.previous_reward = 0
 
         self.state = np.array(
-            [self.car.x, self.car.y, self.car.angle, self.car.vel, self.parking_space_distance()]
+            [    
+                normalize_value(abs(self.car.x - self.parking_space.center[0]), 0, WIDTH),
+                normalize_value(abs(self.car.y - self.parking_space.center[1]), 0, HEIGHT),
+                normalize_value(abs(self.angle_to_parking_space() - self.car.angle), 0, 359),
+                normalize_value(self.car.vel, -4, 4),
+            ]
         )
 
         return self.state, 0
@@ -158,6 +181,9 @@ class ParkingEnv(Env):
     def parking_space_distance(self):
         return calculate_rect_distance(self.car.get_center(self.window), self.parking_space.center)
     
+    def angle_to_parking_space(self):
+        return calculate_angle(self.car.get_center(self.window), self.parking_space.center)
+
     def out_of_bounds(self):
         if self.car.x < 0 or self.car.y < 0 or self.car.x > WIDTH - self.car.img.get_width() - 10 or self.car.y > HEIGHT - self.car.img.get_height():
             return True
@@ -207,7 +233,7 @@ if __name__ == "__main__":
         else:
             action[1] = 0
 
-    env = ParkingEnv(False, True)
+    env = ParkingEnv(False)
     quit = False
     while not quit:
         env.reset()
@@ -215,8 +241,8 @@ if __name__ == "__main__":
         steps = 0
         restart = False
         while True:
-            # register_input()
-            action = env.action_space.sample()
+            register_input()
+            # action = env.action_space.sample()
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:

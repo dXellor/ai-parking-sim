@@ -9,7 +9,7 @@ def main(args):
     arg_error = False
     env = ParkingEnv(False, args.obstacles)
     if args.algorithm == "ppo":
-        model = PPO("MlpPolicy", env, verbose=1)
+        model = PPO("MlpPolicy", env, verbose=1, n_steps=512, gamma=0.95)
     elif args.algorithm == "a2c":
         model = A2C("MlpPolicy", env, verbose=1)
     else:
@@ -18,12 +18,12 @@ def main(args):
         arg_error = True
 
     if args.model == "":
-        model_path = RESOURCE_PATH + "parking" + args.algorithm + ("nobs" if args.obstacles == 0 else "wobs")
+        model_path = RESOURCE_PATH + "parking-" + args.algorithm + ("-nobs" if args.obstacles == 0 else "-wobs")
     else:
-        model_path = args.model
+        model_path = RESOURCE_PATH + args.model
 
     try:
-        model.load(model_path)   
+        model = model.load(model_path, env)
     except:
         print("Could not load model file. New file will be created")
 

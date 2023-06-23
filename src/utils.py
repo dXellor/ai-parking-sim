@@ -18,5 +18,18 @@ def blit_rotate_center(win, image, top_left, angle, scale_rec=True):
 def calculate_rect_distance(center1, center2):
     return math.sqrt((center1[0] - center2[0])**2 + (center1[1] - center2[1])**2)
 
+def calculate_angle(center1, center2):
+    dx = center2[0] - center1[0]
+    dy = center2[1] - center1[1]
+    rads = math.atan2(-dy, dx)
+    degrees = math.degrees(rads) - 90
+    if degrees >= 360:
+        degrees = degrees - 360
+    elif degrees <= 0:
+        degrees = degrees + 360 
+
+    return degrees
+
 def normalize_value(value, min, max):
     return (value - min) / (max - min)
+
