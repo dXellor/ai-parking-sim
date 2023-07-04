@@ -29,12 +29,22 @@ def main(args):
 
     print(f"\nConfiguration:\nAlgorithm: {ALG if arg_error else args.algorithm}\nObstacle number: {args.obstacles}\nNumber of timestamps per run: {args.timestamps}\nModel file: {model_path}\n")
 
-    i = 0
-    while True:
-        print(f"Run {i}")
-        i += 1
-        model.learn(args.timestamps)
-        model.save(model_path)  
+    if not args.play:
+        i = 0
+        while True:
+            print(f"Run {i}")
+            i += 1
+            model.learn(args.timestamps)
+            model.save(model_path)  
+    else:
+        print("Running play mode... agent is not learning")
+        obs, _ = env.reset()
+        while True:
+            action, _ = model.predict(obs)
+            obs, _, terminated, success, _ = env.step(action)
+            if terminated or success:
+                print(f'Env reset. Reward won: {env.reward}')
+                obs, _ = env.reset()
 
 if __name__ == "__main__":
     args = get_args()
