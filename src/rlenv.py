@@ -48,9 +48,11 @@ class ParkingEnv(Env):
         # self.action_space = spaces.MultiDiscrete(np.array([3, 3]))
         self.action_space = spaces.Discrete(4)
 
-        # car x and y coord, car angle, car speed, distance to parking
-        self.observation_space = spaces.Box(low=0, high=1, shape=(4,))
-
+        if self.obstacle_number <= 0:
+            # x and y error from parking space center, angle error and car velocity
+            self.observation_space = spaces.Box(low=0, high=1, shape=(4,))
+        else:
+            self.observation_space = spaces.Box(low=0, high=1, shape=(4 + self.obstacle_number,))
 
     def step(self, action):
         if action == 0:
@@ -74,22 +76,31 @@ class ParkingEnv(Env):
             ]
         )
 
+        if self.obstacle_number > 0:
+            obs = []
+            for o in self.obstacles:
+                distance = self.obstacle_distance(o)
+                if distance <= 150:
+                    obs.append(normalize_value(distance, 0, 150))
+                else:
+                    obs.append(1)
+            self.state = np.append(self.state, np.array(obs))
+
         step_reward = 0
         terminate = False
         success = False
         if action is not None:
             parking_distance = self.parking_space_distance()
             step_reward -= parking_distance/100
-            if abs(self.angle_to_parking_space() - self.car.angle) < 3 or abs(self.angle_to_parking_space() - self.car.angle) > 356:
-                if not self.looking_at_parking:
-                    step_reward += 100
-                    self.looking_at_parking = True
-                    print("POGLEDAO PARKING")
-            else:
-                if self.looking_at_parking:
-                    step_reward -= 10
-                else:
-                    step_reward -= 1
+            # if abs(self.angle_to_parking_space() - self.car.angle) < 3 or abs(self.angle_to_parking_space() - self.car.angle) > 356:
+            #     if not self.looking_at_parking:
+            #         step_reward += 100
+            #         self.looking_at_parking = True
+            # else:
+            #     if self.looking_at_parking:
+            #         step_reward -= 10
+            #     else:
+            #         step_reward -= 1
 
             if self.car.vel < 0.5 and parking_distance > 20 and self.looking_at_parking:
                 step_reward -= 1
@@ -104,7 +115,7 @@ class ParkingEnv(Env):
             if self.obstacle_number > 0:
                 if self.obstacle_collision():
                     self.car.reset()
-                    step_reward -= 1000
+                    step_reward -= 100
 
             # if self.counter == 0:
             #     step_reward -= 100
@@ -152,6 +163,16 @@ class ParkingEnv(Env):
             ]
         )
 
+        if self.obstacle_number > 0:
+            obs = []
+            for o in self.obstacles:
+                distance = self.obstacle_distance(o)
+                if distance <= 150:
+                    obs.append(normalize_value(distance, 0, 150))
+                else:
+                    obs.append(1)
+            self.state = np.append(self.state, np.array(obs))
+
         return self.state, 0
 
     def close(self):
@@ -184,6 +205,9 @@ class ParkingEnv(Env):
     def angle_to_parking_space(self):
         return calculate_angle(self.car.get_center(self.window), self.parking_space.center)
 
+    def obstacle_distance(self, obstacle):
+        return calculate_rect_distance(self.car.get_center(self.window), obstacle.center)
+
     def out_of_bounds(self):
         if self.car.x < 0 or self.car.y < 0 or self.car.x > WIDTH - self.car.img.get_width() - 10 or self.car.y > HEIGHT - self.car.img.get_height():
             return True
@@ -214,26 +238,25 @@ class ParkingEnv(Env):
 
 
 if __name__ == "__main__":
-    action = np.array([0.0, 0.0])
 
     def register_input():
+        action = None
+        
         keys = pygame.key.get_pressed()
 
         if keys[pygame.K_DOWN]:
-            action[0] = 2
+            action = 1
         elif keys[pygame.K_UP]:
-            action[0] = 1
-        else:
-            action[0] = 0
+            action = 0
 
         if keys[pygame.K_LEFT]:
-            action[1] = 2
+            action = 3
         elif keys[pygame.K_RIGHT]:
-            action[1] = 1
-        else:
-            action[1] = 0
+            action = 2
 
-    env = ParkingEnv(False)
+        return action
+
+    env = ParkingEnv(False, 10)
     quit = False
     while not quit:
         env.reset()
@@ -241,7 +264,7 @@ if __name__ == "__main__":
         steps = 0
         restart = False
         while True:
-            register_input()
+            action = register_input()
             # action = env.action_space.sample()
 
             for event in pygame.event.get():
