@@ -84,7 +84,6 @@ class ParkingEnv(Env):
                 if not self.looking_at_parking:
                     step_reward += 100
                     self.looking_at_parking = True
-                    print("POGLEDAO PARKING")
             else:
                 if self.looking_at_parking:
                     step_reward -= 10
